@@ -196,7 +196,7 @@ getPanCanDistanceStats<-function(fname='panCancerDistances.csv'){
   tab<-read.csv(fname)%>%subset(net2_type=='community')%>%select(-X)
   
   dtab<-tab%>%subset(hyp2=='panCan')%>%subset(hyp1!='panCan')
-  norms<-read.csv("data/PDC_biospecimen_manifest_07182020_151323.csv")$Aliquot.Submitter.ID
+  norms<-c()#read.csv("data/PDC_biospecimen_manifest_07182020_151323.csv")$Aliquot.Submitter.ID
  dmat<-dtab%>%select(net2,distance,net1)%>%distinct()%>%
     tidyr::pivot_wider(values_from=distance,names_from=net2)%>%
    subset(!net1%in%norms)%>%
