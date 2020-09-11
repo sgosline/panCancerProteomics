@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Goal is to create a single set of pancancer signatures
+this is the main executable that evaluates the hyphal network package on a pancancer dataset
+"""
 
 @author: gosl241
-"""
+
 
 import argparse
 import sys
@@ -16,6 +16,7 @@ import hyphalnet.hyphaeStats as hyStats
 import pandas as pd
 import pickle
 import random
+import queryPDCfiles as pdc
 
 class kvdictAppendAction(argparse.Action):
     """
@@ -57,43 +58,16 @@ parser.add_argument('--graph', dest='graph', default='../../data/igraphPPI.pkl',
 
 
 def loadCancerData(qt):
-    norms = prot.normals_from_manifest('../cancerProtFeatures/data/PDC_biospecimen_manifest_07182020_151323.csv')
-
-#    bcData = prot.parsePDCfile('../cancerProtFeatures/data/TCGA_Breast_BI_Proteome.itraq.tsv')
-    bcData = prot.parsePDCfile('../cancerProtFeatures/data/CPTAC2_Breast_Prospective_Collection_BI_Proteome.tmt10.tsv')
-    lungData = prot.parsePDCfile('../cancerProtFeatures/data/CPTAC3_Lung_Adeno_Carcinoma_Proteome.tmt10.tsv')
-    colData = prot.parsePDCfile('../cancerProtFeatures/data/CPTAC2_Colon_Prospective_Collection_PNNL_Proteome.tmt10.tsv')
-    gbmData = prot.parsePDCfile('../cancerProtFeatures/data/CPTAC3_Glioblastoma_Multiforme_Proteome.tmt11.tsv')
-    hccData = prot.parsePDCfile('../cancerProtFeatures/data/Zhou_Liver_Cancer_Proteome.tmt11.tsv')
-    hnsccData = prot.parsePDCfile('../cancerProtFeatures/data/CPTAC3_Head_and_Neck_Carcinoma_Proteome.tmt11.tsv')
-    ovcaData = prot.parsePDCfile('../cancerProtFeatures/data/TCGA_Ovarian_PNNL_Proteome.itraq.tsv')
-
-    normPats = {'brca': set([a for a in bcData['Patient'] if a in norms['Breast Invasive Carcinoma']]),\
-                'coad': set([a for a in colData['Patient'] if a in norms['Colon Adenocarcinoma']]),\
-                'luad': set([a for a in lungData['Patient'] if a in norms['Lung Adenocarcinoma']]),\
-                'gbm': set([a for a in gbmData['Patient'] if a in norms['Other']]),
-                'hcc': set([a for a in hccData['Patient'] if a in ['P'+n for n in norms['Hepatocellular Carcinoma ']]]),\
-                'ovca': set([a for a in ovcaData['Patient'] if a in norms['Ovarian Serious Cystadenocarcinoma']]),\
-                'hnscc': set([a for a in hnsccData['Patient'] if a in norms['Head and Neck Squamous Cell Carcinoma']])}
-
-    for key, np in normPats.items():
-        print(len(np), 'normals for', key)
-
-    namemapper = None #hyp.mapHGNCtoNetwork()
-
+    meta, samp = pdc.query_all_studies()
+    patData = pdc.compute_pooled_tumor_normal(meta,samp)
     #here we get the top most distinguished from normals
-    patDiffs = {'hnscc': prot.getTumorNorm(hnsccData, normPats['hnscc'], namemapper, quantThresh=qt),
-               # 'ovca': prot.getTumorNorm(ovcaData, normPats['ovca'], namemapper, quantThresh=qt),
-                'hcc': prot.getTumorNorm(hccData, normPats['hcc'], namemapper, quantThresh=qt),
-                'brca': prot.getTumorNorm(bcData, normPats['brca'], namemapper, quantThresh=qt),
-                'luad': prot.getTumorNorm(lungData, normPats['luad'], namemapper, quantThresh=qt),
-                'coad': prot.getTumorNorm(colData, normPats['coad'], namemapper, quantThresh=qt),
-                'gbm': prot.getTumorNorm(gbmData, normPats['gbm'], namemapper, quantThresh=qt)}
+    patDiffs = {}
     pc = dict()
-    for key,val in patDiffs.items():
-        pc.update(val)
+    for key,val in patData.items():
+        patDiffs[key]=prot.getProtsByPatient(val,column='logRatio',quantThresh=0.01)
+        pc.update(patDiffs[key])
     print("PanCan dictionary has",len(pc),'patients')
-    patDiffs={'panCan':pc}
+    patDiffs['panCan'] = pc
     return patDiffs
 
 def build_hyphae_from_data(qt, g, sample=False):
@@ -153,6 +127,6 @@ def main():
 if __name__ == '__main__':
     main()
 
-if True:
-    g = pickle.load(open('../../data/igraphPPI.pkl', 'rb'))
-    hyphae = build_hyphae_from_data(0.01, g, True)
+#if True:
+#    g = pickle.load(open('../../data/igraphPPI.pkl', 'rb'))
+#    hyphae = build_hyphae_from_data(0.01, g, True)

@@ -99,7 +99,7 @@ def compute_matched_tumor_normal(metadata, sampdata):
         tum_cases = tum_met['case_submitter_id']\
             [tum_met.sample_type.isin(['Tumor', 'Primary Tumor'])]
         #collect all the column indices for the disease
-        lfc_dict = {}
+        lfc_list = []
         if(len(norm_cases)==0):
            # print("No normal cases for",tum)
             continue
@@ -125,11 +125,13 @@ def compute_matched_tumor_normal(metadata, sampdata):
              #   print("Could not find normal values for",n)
                 continue
             norm_means = pd.concat(norm_vals, axis=1).mean(axis=1)
-            lfc = tum_means - norm_means
-            lfc = lfc.dropna()
-            lfc_dict[n] = lfc
-        print("Found", len(lfc_dict), 'tumor-matched lfcs for', tum)
-        dis_dict[tum] = lfc_dict
+            lfc = pd.DataFrame({'logRatio':(tum_means - norm_means)})
+           # print(lfc)
+            lfc = lfc.dropna().reset_index().rename(columns={'index':'Gene'})
+            lfc['Patient'] = n
+            lfc_list.append(lfc)
+        print("Found", len(lfc_list), 'tumor-matched lfcs for', tum)
+        dis_dict[tum] = pd.concat(lfc_list,axis=0)
     return dis_dict
 
 def compute_pooled_tumor_normal(metadata,sampdata):
@@ -161,7 +163,7 @@ def compute_pooled_tumor_normal(metadata,sampdata):
             #print("Could not find _any_ normals for",tum)
             continue
         norm_means = pd.concat(norm_vals, axis=1).mean(axis=1)
-        lfc_dict = {}
+        lfc_list = []
         for n in tum_cases:
             tum_cols = []
             for i in tum_cases[tum_cases==n].index:
@@ -173,11 +175,14 @@ def compute_pooled_tumor_normal(metadata,sampdata):
             #    print("Could not find tumor values for",n)
                 continue
             tum_means = pd.concat(tum_vals, axis=1).mean(axis=1)
-            lfc = tum_means - norm_means
-            lfc = lfc.dropna()
-            lfc_dict[n] = lfc
-        print("Found", len(lfc_dict), 'tumor-pooled lfcs for', tum)
-        dis_dict[tum] = lfc
+            lfc = pd.DataFrame({'logRatio':(tum_means - norm_means)})
+          #  lfc = pd.DataFrame(lfc)
+           # print(lfc)
+            lfc = lfc.dropna().reset_index().rename(columns={'index':'Gene'})
+            lfc['Patient'] = n
+            lfc_list.append(lfc)
+        print("Found", len(lfc_list), 'tumor-pooled lfcs for', tum)
+        dis_dict[tum] = pd.concat(lfc_list, axis=0)
     return dis_dict
 
 def query_all_studies():
